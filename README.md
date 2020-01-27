@@ -29,7 +29,7 @@ Hyperopt is a Python library that provides algorithms and software infrastructur
 ## Installation
 
 - Python version 3.0
-- Install three-party packages
+- Install thrid-party packages
   - `pip install hyperopt`
   - `pip install scikit-learn==0.20.4`
   - `pip install iteration_utilities`
@@ -43,12 +43,12 @@ Hyperopt is a Python library that provides algorithms and software infrastructur
 + Run `code\optALL.py` to evaluate the impact of parameter optimization on both transfer learning and classifier in CPDP simultaneously.
 + Run `code\optSEQ.py` to evaluate the impact of parameter optimization in a sequential manner, i.e., optimising the parameters of transfer learning before those of the classifier.
 
-## scalability
+## Further developments
 
 > If you want to investigate more combinations (transfer learning algorithms + classification algorithms), please modify the following parts of code.
 
-1. Add your transfer learning algorithms into `code\Algorithms\domainAdaptation.py`
-2. Add your classification algorithms into `code\Algorithms\Classifier.py`
+1. Add new transfer learning algorithms into `code\Algorithms\domainAdaptation.py`
+2. Add new classification algorithms into `code\Algorithms\Classifier.py`
 3. Modify the call format in `code\Alogrithms\Framework.py`
 
 ## Contact
