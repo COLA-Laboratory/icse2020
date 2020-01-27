@@ -20,21 +20,21 @@ Hyperopt is a Python library that provides algorithms and software infrastructur
 
 ![](framework.png)
 
-## Installation
-
-Please read `INSTALL.md` .
-
 ## Investigated datasets
 
 + AEEEM
 + JURECZKO (12 selected projects)
 + ReLink
 
-## The framework of the experiment
+## Installation
 
-![](framework.png)
+- Python version 3.0
+- Install three-party packages
+  - `pip install hyperopt`
+  - `pip install scikit-learn==0.20.4`
+  - `pip install iteration_utilities`
 
-## Usage
+## A quick start to run experiments
 
 > Please follow `INSTALL.md` before starting to run the code.
 
