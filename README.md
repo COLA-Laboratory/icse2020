@@ -38,10 +38,10 @@ Hyperopt is a Python library that provides algorithms and software infrastructur
 
 > Please follow `INSTALL.md` before starting to run the code.
 
-+ If you want to investigate the impact of parameter optimization on domain adpation part of CPDP, please run  `code\optADPT.py`;
-+ If you want to investigate the impact of parameter optimization on classifiacation part of CPDP, please run `code\optCLF.py`;
-+ If you want to investigate the impact of parameter optimization on whole parts of CPDP, please run `code\optALL.py`;
-+ If you want to investigate the impact of parameter optimization on whole parts of CPDP but in a sequential way, please run `code\optSEQ.py`.
++ Run `code\optADPT.py` to evaluate the impact of parameter optimization on the transfer learning in CPDP.
++ Run `code\optCLF.py` to evaluate the impact of parameter optimization on the classifier in CPDP.
++ Run `code\optALL.py` to evaluate the impact of parameter optimization on both transfer learning and classifier in CPDP simultaneously.
++ Run `code\optSEQ.py` to evaluate the impact of parameter optimization in a sequential manner, i.e., optimising the parameters of transfer learning before those of the classifier.
 
 ## scalability
 
