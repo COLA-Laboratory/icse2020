@@ -1,4 +1,6 @@
-# Empirical Experimental Code
+This is the artifact for the ICSE 2020 Technical Track paper: "Understanding the Automated Parameter Optimization on Transfer Learning for Cross-Project Defect Prediction: An Empirical Study". A pre-print of this paper is available at Accepted Paper #702.pdf.
+
+# Artifact Evaluation
 
 > This repository includes the code of the ICSE2020 paper："Understanding the Automated Parameter Optimization on Transfer Learning for Cross-Project Defect Prediction: An Empirical Study".
 
