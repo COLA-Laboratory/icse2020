@@ -51,4 +51,7 @@ Hyperopt is a Python library that provides algorithms and software infrastructur
 
 ## Contact
 
-If you meet any problems, please feel free to contact us. (From `CONTACT.md`, you can get our e-mails.) 
+If you meet any problems, please feel free to contact us.
++ Ke Li (k.li@exeter.ac.uk)
++ Zilin Xiang (zilin.xiang@gmail.com)
++ Tao Chen (t.t.chen@lboro.ac.uk)
