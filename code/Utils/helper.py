@@ -1,109 +1,10 @@
-from Utils.Hyperopt_doer import *
+from iteration_utilities import deepflatten
+from Utils.Hyperopt_doer import optParamCLF, optParamSEQ, optParamAll, optParamAdpt
 from Utils.File import *
-from numpy import asarray, compress, sum
-from scipy.stats import stats, find_repeats, distributions
-from math import sqrt
-from numpy.ma import not_equal
-import re
-import warnings
+import re, time
 import numpy as np
-
-
-def wilcoxon(x, y=None, zero_method="wilcox", correction=False):
-    """
-    Calculate the Wilcoxon signed-rank test.
-    The Wilcoxon signed-rank test tests the null hypothesis that two
-    related paired samples come from the same distribution. In particular,
-    it tests whether the distribution of the differences x - y is symmetric
-    about zero. It is a non-parametric version of the paired T-test.
-    Parameters
-    ----------
-    x : array_like
-        The first set of measurements.
-    y : array_like, optional
-        The second set of measurements.  If `y` is not given, then the `x`
-        array is considered to be the differences between the two sets of
-        measurements.
-    zero_method : string, {"pratt", "wilcox", "zsplit"}, optional
-        "pratt":
-            Pratt treatment: includes zero-differences in the ranking process
-            (more conservative)
-        "wilcox":
-            Wilcox treatment: discards all zero-differences
-        "zsplit":
-            Zero rank split: just like Pratt, but spliting the zero rank
-            between positive and negative ones
-    correction : bool, optional
-        If True, apply continuity correction by adjusting the Wilcoxon rank
-        statistic by 0.5 towards the mean value when computing the
-        z-statistic.  Default is False.
-    Returns
-    -------
-    T : float
-        The sum of the ranks of the differences above or below zero, whichever
-        is smaller.
-    p-value : float
-        The two-sided p-value for the test.
-    Notes
-    -----
-    Because the normal approximation is used for the calculations, the
-    samples used should be large.  A typical rule is to require that
-    n > 20.
-    References
-    ----------
-    .. [1] http://en.wikipedia.org/wiki/Wilcoxon_signed-rank_test
-    """
-
-    if not zero_method in ["wilcox", "pratt", "zsplit"]:
-        raise ValueError("Zero method should be either 'wilcox' \
-                          or 'pratt' or 'zsplit'")
-
-    if y is None:
-        d = x
-    else:
-        x, y = map(asarray, (x, y))
-        if len(x) != len(y):
-            raise ValueError('Unequal N in wilcoxon.  Aborting.')
-        d = x - y
-
-    if zero_method == "wilcox":
-        d = compress(not_equal(d, 0), d, axis=-1)  # Keep all non-zero differences
-
-    count = len(d)
-    if (count < 10):
-        warnings.warn("Warning: sample size too small for normal approximation.")
-    r = stats.rankdata(abs(d))
-    r_plus = sum((d > 0) * r, axis=0)
-    r_minus = sum((d < 0) * r, axis=0)
-
-    if zero_method == "zsplit":
-        r_zero = sum((d == 0) * r, axis=0)
-        r_plus += r_zero / 2.
-        r_minus += r_zero / 2.
-
-    if r_plus < r_minus:
-        T = r_plus
-        tmp = r_plus
-    else:
-        T = r_minus
-        tmp = -r_plus
-    T = min(r_plus, r_minus)
-    mn = count * (count + 1.) * 0.25
-    se = count * (count + 1.) * (2. * count + 1.)
-
-    if zero_method == "pratt":
-        r = r[d != 0]
-
-    replist, repnum = find_repeats(r)
-    if repnum.size != 0:
-        # Correction for repeated elements.
-        se -= 0.5 * (repnum * (repnum * repnum - 1)).sum()
-
-    se = sqrt(se / 24)
-    correction = 0.5 * int(bool(correction)) * np.sign(T - mn)
-    z = (T - mn - correction) / se
-    prob = 2. * distributions.norm.sf(abs(z))
-    return tmp, prob
+from func_timeout import FunctionTimedOut
+from sklearn.model_selection import train_test_split
 
 
 def is_number(num):
@@ -184,7 +85,7 @@ def GetData(filename, showType=False):
                         elif (item == 'true') or (item == 'TRUE') or (item == 'Y') or (item == 'buggy'):
                             y.append(1)
                         else:
-                            y.append(-1)
+                            y.append(0)
                     x.append(tmp)
 
         if showType:
@@ -287,7 +188,7 @@ def MfindCommonMetric(list, ftarget, split=False):
         loc = []
         base = 0
 
-        for item in flist:
+        for item in list:
             x, y, Type = GetData(item, showType=True)
             loc.append(base)
             base += len(y)
@@ -302,6 +203,7 @@ def MfindCommonMetric(list, ftarget, split=False):
             return fsx, sy, ftx, ty, loc
         else:
             return fsx, sy, ftx, ty, []
+
 
 def GetDataList(flist):
     a = flist.pop()
@@ -324,6 +226,7 @@ def collectData(fname):
             i += 1
             print(np.asarray(line.split()))
     return np.concatenate(([tmp], res))
+
 
 def resCollect():
     for mode in {'all', 'clf', 'seq', 'adpt'}:
@@ -360,56 +263,130 @@ def normal(xs, xt):
     return xs, xt
 
 
-def RunExperiment(fsource, ftarget, adaptation, classifier, mode='adpt', repeat=10, fe=1000):
-    if adaptation == 'DS' or adaptation == 'FS':
-        Xsource, Lsource, Xtarget, Ltarget, loc = MfindCommonMetric(fsource, ftarget, split=True)
-    else:
-        Xsource, Lsource, Xtarget, Ltarget, loc = MfindCommonMetric(fsource, ftarget)
-    target = ftarget.split('/')[-1][:-5]
+# REPEAT denotes the number of repetition of parameter optimization
+def RunExperiment(Xsource, Lsource, Xtarget, Ltarget, loc, target, adaptation, classifier, mode='adpt', repeat=10,
+                  fe=1000):
     fres = create_dir('res' + mode.upper() + '/' + target)
+    fp = create_dir('para' + mode.upper() + '/' + target)
 
-    if adaptation == 'DBSCANfilter':
-        Xsource, Xtarget = normal(Xsource, Xtarget)
-        Xsource[Xsource!=Xsource] = 0
-        Xtarget[Xtarget!=Xtarget] = 0
+    if adaptation in ['NNfilter', 'MCWs']:
+        # supervised (repeat 10 times)
+        for it in range(10):
+            train, test, ytrain, ytest = train_test_split(Xtarget, Ltarget, test_size=0.9, random_state=42)
+
+            num = repeat
+            res = np.zeros((num, 2))
+            for i in range(num):
+                if mode == 'adpt':
+                    optimizer = optParamAdpt(Xsource, Lsource, test, ytest, loc, classifier, adaptation, fe,
+                                             train=train, Ltrain=ytrain)
+                elif mode == 'all':
+                    optimizer = optParamAll(Xsource, Lsource, test, ytest, loc, classifier, adaptation, fe, train=train,
+                                            Ltrain=ytrain)
+                elif mode == 'seq':
+                    optimizer = optParamSEQ(Xsource, Lsource, test, ytest, loc, classifier, adaptation, fe, train=train,
+                                            Ltrain=ytrain)
+                elif mode == 'clf':
+                    optimizer = optParamCLF(Xsource, Lsource, test, ytest, loc, classifier, adaptation, fe, train=train,
+                                            Ltrain=ytrain)
+
+                try:
+                    res[i], his, best = optimizer.run()
+                except FunctionTimedOut:
+                    trails = optimizer.trails
+                    if mode == 'seq':
+                        if len(optimizer.trails.results) == 0:
+                            trails = optimizer.Atrails
+                    his = dict()
+                    try:
+                        his['name'] = list(trails.trials[0]['misc']['vals'].keys())
+                    except:
+                        his['name'] = [None]
+                    j = 0
+                    for item in trails.trials:
+                        # only record the results of successful runs
+                        if item['state'] == 2:
+                            results = list(deepflatten(item['misc']['vals'].values()))
+                            results.append(item['result']['result'])
+                            his[j] = results
+                            j += 1
+                    if j > 0:
+                        inc_value = trails.best_trial['result']['result']
+                        res[i] = np.asarray([optimizer.def_value, inc_value])
+                        best = trails.best_trial['misc']['vals']
+                    else:
+                        try:
+                            inc_value = trails.best_trial['result']['result']
+                            res[i] = np.asarray([optimizer.def_value, inc_value])
+                            best = trails.best_trial['misc']['vals']
+                        except:
+                            res[i] = np.asarray([0, 0])
+                            best = []
+
+                # print the result into file
+                with open(fres + adaptation + '-' + classifier + '.txt', 'a+') as f:
+                    print(res[i], best, file=f)
+                    if i == num - 1:
+                        print('-----------------------------------------', file=f)
+
+                with open(fp + adaptation + '-' + classifier + '-' + '.txt', 'a+') as f:
+                    for item in his.values():
+                        print(item, file=f)
+                        if i == num - 1:
+                            print('-----------------------------------------', file=f)
+
+    else:
+        # un-supervised (just 1 times)
+        num = repeat
+        res = np.zeros((num, 2))
+        for i in range(num):
+            if mode == 'adpt':
+                optimizer = optParamAdpt(Xsource, Lsource, Xtarget, Ltarget, loc, classifier, adaptation, fe)
+            elif mode == 'all':
+                optimizer = optParamAll(Xsource, Lsource, Xtarget, Ltarget, loc, classifier, adaptation, fe)
+            elif mode == 'seq':
+                optimizer = optParamSEQ(Xsource, Lsource, Xtarget, Ltarget, loc, classifier, adaptation, fe)
+            elif mode == 'clf':
+                optimizer = optParamCLF(Xsource, Lsource, Xtarget, Ltarget, loc, classifier, adaptation, fe)
+
+            try:
+                res[i], his, best = optimizer.run()
+            except FunctionTimedOut:
+                trails = optimizer.trails
+                if mode == 'seq':
+                    if len(optimizer.trails.results) == 0:
+                        trails = optimizer.Atrails
+                his = dict()
+                try:
+                    his['name'] = list(trails.trials[0]['misc']['vals'].keys())
+                except:
+                    his['name'] = [None]
+                j = 0
+                for item in trails.trials:
+                    # only record the results of successful runs
+                    if item['state'] == 2:
+                        results = list(deepflatten(item['misc']['vals'].values()))
+                        results.append(item['result']['result'])
+                        his[j] = results
+                        j += 1
+                if j > 0:
+                    inc_value = trails.best_trial['result']['result']
+                    res[i] = np.asarray([optimizer.def_value, inc_value])
+                    best = trails.best_trial['misc']['vals']
+                else:
+                    try:
+                        inc_value = trails.best_trial['result']['result']
+                        res[i] = np.asarray([optimizer.def_value, inc_value])
+                        best = trails.best_trial['misc']['vals']
+                    except:
+                        res[i] = np.asarray([0, 0])
+                        best = []
 
 
-    num = repeat
-    res = np.zeros((num, 2))
-    for i in range(num):
-        if mode == 'adpt':
-            res[i] = optParamAdpt(Xsource, Lsource, Xtarget, Ltarget, loc, classifier, adaptation, fe).run()
-        elif mode == 'all':
-            res[i] = optParamAll(Xsource, Lsource, Xtarget, Ltarget, loc, classifier, adaptation, fe).run()
-        elif mode == 'clf':
-            res[i] = optParamCLF(Xsource, Lsource, Xtarget, Ltarget, loc, classifier, adaptation, fe).run()
-        elif mode == 'seq':
-            res[i] = optParamSEQ(Xsource, Lsource, Xtarget, Ltarget, loc, classifier, adaptation, fe).run()
-        # print the result into file
-        with open(fres + adaptation + '-' + classifier + '.txt', 'at') as f:
-            print(res[i], file=f)
+            # print the result into file
+            with open(fres + adaptation + '-' + classifier + '.txt', 'a+') as f:
+                print(res[i], best, file=f)
 
-
-
-def HeteRunEXperiment(fsource, ftarget, classifier, mode='adpt', repeat=10):
-    Xsource, Lsource = GetDataList(fsource)
-    Xtarget, Ltarget = GetData(ftarget)
-    source = fsource[0].split('/')[1]
-    target = ftarget.split('/')[-1][:-5]
-    fres = create_dir('res' + mode.upper() + '/hete-'+ target)
-
-    num = repeat
-    res = np.zeros((num, 2))
-    for i in range(num):
-        if mode == 'adpt':
-            res[i] = optParamAdpt(Xsource, Lsource, Xtarget, Ltarget, [], classifier, 'HDP').run()
-        elif mode == 'all':
-            res[i] = optParamAll(Xsource, Lsource, Xtarget, Ltarget, [], classifier, 'HDP').run()
-        elif mode == 'clf':
-            res[i] = optParamCLF(Xsource, Lsource, Xtarget, Ltarget, [], classifier, 'HDP').run()
-        elif mode == 'seq':
-            res[i] = optParamSEQ(Xsource, Lsource, Xtarget, Ltarget, [], classifier, 'HDP').run()
-
-        # print the result into file
-        with open(fres + source + '-' + classifier + '.txt', 'at') as f:
-            print(res[i], file=f)
+            with open(fp + adaptation + '-' + classifier + '.txt', 'a+') as f:
+                for item in his.values():
+                    print(item, file=f)

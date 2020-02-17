@@ -3,7 +3,7 @@
 This is the artifact, including the source code and dataset, for the ICSE 2020 Technical Track paper: "Understanding the Automated Parameter Optimization on Transfer Learning for Cross-Project Defect Prediction: An Empirical Study". A pre-print of this paper is available at Accepted Paper https://github.com/COLA-Laboratory/icse2020/blob/master/icse2020-paper1711.pdf.
 
 ## Background
-Data-driven defect prediction has become increasingly important in software engineering process. Since it is not uncommon that data from a software project is insufficient for training a reliable defect prediction model, transfer learning that borrows data/konwledge from other projects to facilitate the model building at the current project, namely Cross-Project Defect Prediction (CPDP), is naturally plausible. Most CPDP techniques involve two major steps, i.e., transfer learning and classification, each of which has at least one parameter to be tuned to achieve their optimal performance. This practice fits well with the purpose of automated parameters optimization. However, there is a lack of thorough understanding about what are the impacts of automated parameters optimization on various CPDP techniques.
+Data-driven defect prediction has become increasingly important in software engineering process. Since it is not uncommon that data from a software project is insufficient for training a reliable defect prediction model, transfer learning that borrows data/knowledge from other projects to facilitate the model building at the current project, namely Cross-Project Defect Prediction (CPDP), is naturally plausible. Most CPDP techniques involve two major steps, i.e., transfer learning and classification, each of which has at least one parameter to be tuned to achieve their optimal performance. This practice fits well with the purpose of automated parameters optimization. However, there is a lack of thorough understanding about what are the impacts of automated parameters optimization on various CPDP techniques.
 
 Bearing this consideration in mind, this paper presents the first empirical study that looks into such impacts on 62 CPDP techniques, 13 of which are chosen from the existing CPDP literature while the other 49 ones have not been explored before. We build defect prediction models over 20 real-world software projects that are of different scales and characteristics.
 
@@ -26,11 +26,14 @@ Hyperopt is a Python library that provides algorithms and software infrastructur
 
 ## Installation
 
-- Python version 3.0
-- Install thrid-party packages
+- `Python==3.6` 
+- Install thrid-party packages (In `Anacaonda` environment)
   - `pip install hyperopt`
   - `pip install scikit-learn==0.20.4`
   - `pip install iteration_utilities`
+  - `conda install tqdm`
+  - `pip install imbalanced-learn==0.4  `
+  - `pip install func_timeout`
 
 ## A quick start to run experiments
 
@@ -53,5 +56,5 @@ Hyperopt is a Python library that provides algorithms and software infrastructur
 
 If you meet any problems, please feel free to contact us.
 + Ke Li (k.li@exeter.ac.uk)
-+ Zilin Xiang (zilin.xiang@gmail.com)
++ Zilin Xiang (zilin.xiang@hotmail.com)
 + Tao Chen (t.t.chen@lboro.ac.uk)

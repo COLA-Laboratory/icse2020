@@ -3,8 +3,6 @@ from Algorithms.HISNN import *
 from Algorithms.DTB import *
 from collections import defaultdict
 from sklearn.preprocessing import normalize
-import func_timeout
-from func_timeout import func_set_timeout
 
 
 class cpdp(object):
