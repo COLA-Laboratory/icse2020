@@ -1,5 +1,4 @@
 from Algorithms.domainAdaptation import *
-from Algorithms.HISNN import *
 from Algorithms.DTB import *
 from collections import defaultdict
 from sklearn.preprocessing import normalize

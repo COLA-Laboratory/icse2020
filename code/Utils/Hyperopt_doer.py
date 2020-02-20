@@ -1,6 +1,6 @@
 from Algorithms.Framework import cpdp
 from Algorithms.Framework import *
-from hyperopt import hp, fmin, tpe, Trials, STATUS_OK
+from hyperopt import hp, fmin, tpe, Trials, STATUS_OK, space_eval
 
 class optParamAll(object):
     def __init__(self, sx, sy, tx, ty, loc, classifier, adaptation, fe=1000):
@@ -12,6 +12,7 @@ class optParamAll(object):
         self.adaptation = adaptation
         self.clf = classifier
         self.fe = fe
+        self.trails = Trials()
 
     def objFunc(self, params):
         self.p = cpdp(clf=self.clf, adpt=self.adaptation)
@@ -68,18 +69,14 @@ class optParamAll(object):
                 'eachCluster': hp.choice('eachCluster', range(1, 100))
             }
 
-        if self.adaptation == 'HDP':
+        if self.adaptation == 'Universal':
             adptdefault_value = {
-                'HDPthreshold': 0.05,
-                'HDPanalyzer': 'ksAnalyzer',
-                'HDPms': 15,
-                'HDPmsm': 'f_classif'
+                'pvalue': 0.05,
+                'QuantifyType': 'cliff'
             }
             adptparamSpace = {
-                'HDPthreshold': hp.uniform('HDPthreshold', 0.01, 0.5),
-                'HDPanalyzer': hp.choice('HDPanalyzer', ['ksAnalyzer', 'pAnalyzer', 'scoAnalyzer']),
-                'HDPms': hp.choice('HDPms', range(10, 90)),
-                'HDPmsm': hp.choice('HDPmsm', ['f_classif', 'chi2', 'mutual_info_classif'])
+                'pvalue': hp.uniform('pvalue', 0.01, 0.1),
+                'QuantifyType': hp.choice('QuantifyType', ['cliff', 'cohen'])
             }
 
         if self.adaptation == 'DTB':
@@ -110,16 +107,6 @@ class optParamAll(object):
             adptparamSpace = {
                 'DSBFtopk': hp.choice('DSBFtopk', range(1, 10)),
                 'DSBFneighbors': hp.choice('DSBFneighbors', range(1, 100))
-            }
-
-        if self.adaptation == 'HISNN':
-            adptdefault_value = {
-                'MinHam': 1.0,
-                'HISNNneighbors': 5
-            }
-            adptparamSpace = {
-                'MinHam': hp.uniform('MinHam', 0.5, 100),
-                'HISNNneighbors': hp.choice('HISNNneighbors', range(1, 100))
             }
 
 
@@ -219,12 +206,21 @@ class optParamAll(object):
 
         paramSpace = dict(adptparamSpace, **clfparamSpace)
         default_value = dict(adptdefault_value, **clfdefault_value)
-        best = fmin(self.objFunc, space=paramSpace, algo=tpe.suggest, max_evals=self.fe, trials=trails)
+        self.def_value = self.objFunc(default_value)['result']
+        best = fmin(self.objFunc, space=paramSpace, algo=tpe.suggest, max_evals=self.fe, trials=self.trails)
 
-        def_value = self.objFunc(default_value)['result']
-        inc_value = trails.best_trial['result']['result']
+        his = dict()
+        his['name'] = list(self.trails.trials[0]['misc']['vals'].keys())
+        i = 0
+        for item in self.trails.trials:
+            results = list(deepflatten(item['misc']['vals'].values()))
+            results.append(item['result']['result'])
+            his[i] = results
+            i += 1
 
-        return def_value, inc_value
+        inc_value = self.trails.best_trial['result']['result']
+
+        return np.asarray([self.def_value, inc_value]), his, best
 
 
 class optParamAdpt(object):
@@ -237,6 +233,7 @@ class optParamAdpt(object):
         self.adaptation = adaptation
         self.clf = classifier
         self.fe = fe
+        self.trails = Trials()
 
     def objFunc(self, params):
         self.p = cpdp(clf=self.clf, adpt=self.adaptation)
@@ -293,18 +290,14 @@ class optParamAdpt(object):
                 'eachCluster': hp.choice('eachCluster', range(1, 100))
             }
 
-        if self.adaptation == 'HDP':
+        if self.adaptation == 'Universal':
             adptdefault_value = {
-                'HDPthreshold': 0.05,
-                'HDPanalyzer': 'ksAnalyzer',
-                'HDPms': 15,
-                'HDPmsm': 'f_classif'
+                'pvalue': 0.05,
+                'QuantifyType': 'cliff'
             }
             adptparamSpace = {
-                'HDPthreshold': hp.uniform('HDPthreshold', 0.01, 0.5),
-                'HDPanalyzer': hp.choice('HDPanalyzer', ['ksAnalyzer', 'pAnalyzer', 'scoAnalyzer']),
-                'HDPms': hp.choice('HDPms', range(10, 90)),
-                'HDPmsm': hp.choice('HDPmsm', ['f_classif', 'chi2', 'mutual_info_classif'])
+                'pvalue': hp.uniform('pvalue', 0.01, 0.1),
+                'QuantifyType': hp.choice('QuantifyType', ['cliff', 'cohen'])
             }
 
         if self.adaptation == 'HISNN':
@@ -347,13 +340,20 @@ class optParamAdpt(object):
                 'DSBFneighbors': hp.choice('DSBFneighbors', range(1, 100))
             }
 
-        best = fmin(self.objFunc, space=adptparamSpace, algo=tpe.suggest, max_evals=self.fe, trials=trails)
+        self.def_value = self.objFunc(adptdefault_value)['result']
+        best = fmin(self.objFunc, space=adptparamSpace, algo=tpe.suggest, max_evals=self.fe, trials=self.trails)
+        his = dict()
+        his['name'] = list(self.trails.trials[0]['misc']['vals'].keys())
+        i = 0
+        for item in self.trails.trials:
+            results = list(deepflatten(item['misc']['vals'].values()))
+            results.append(item['result']['result'])
+            his[i] = results
+            i += 1
 
-        def_value = self.objFunc(adptdefault_value)['result']
-        inc_value = trails.best_trial['result']['result']
+        inc_value = self.trails.best_trial['result']['result']
 
-
-        return def_value, inc_value
+        return np.asarray([self.def_value, inc_value]), his, best
 
 
 class optParamCLF(object):
@@ -366,6 +366,7 @@ class optParamCLF(object):
         self.adaptation = adaptation
         self.clf = classifier
         self.fe = fe
+        self.trails = Trials()
 
     def objFunc(self, params):
         self.p = cpdp(clf=self.clf, adpt=self.adaptation)
@@ -476,13 +477,22 @@ class optParamCLF(object):
                 'RFmin_samples_split': hp.choice('RFmin_samples_split', range(2, int(len(self.sy) / 10)))
             }
 
-        best = fmin(self.objFunc, space=clfparamSpace, algo=tpe.suggest, max_evals=self.fe, trials=trails)
+        self.def_value = self.objFunc(clfdefault_value)['result']
+        best = fmin(self.objFunc, space=clfparamSpace, algo=tpe.suggest, max_evals=self.fe, trials=self.trails)
 
-        def_value = self.objFunc(clfdefault_value)['result']
-        inc_value = trails.best_trial['result']['result']
+        his = dict()
+        his['name'] = list(self.trails.trials[0]['misc']['vals'].keys())
+        i = 0
+        for item in self.trails.trials:
+            results = list(deepflatten(item['misc']['vals'].values()))
+            results.append(item['result']['result'])
+            his[i] = results
+            i += 1
+
+        inc_value = self.trails.best_trial['result']['result']
 
         # print(def_value)
-        return def_value, inc_value
+        return np.asarray([self.def_value, inc_value]), his, best
 
 
 class optParamSEQ(object):
@@ -495,13 +505,14 @@ class optParamSEQ(object):
         self.adaptation = adaptation
         self.clf = classifier
         self.fe = fe
+        self.trails = Trials()
+        self.Atrails = Trials()
 
         self.SEQ = 0
 
     def objFunc(self, params):
         if self.SEQ == 1:
             params = dict(params, **self.Adptbest)
-        print(params)
         self.p = cpdp(clf=self.clf, adpt=self.adaptation)
         self.p.set_params(**params)
         sx = self.sx
@@ -557,29 +568,16 @@ class optParamSEQ(object):
                 'eachCluster': hp.choice('eachCluster', range(1, 100))
             }
 
-        if self.adaptation == 'HDP':
+        if self.adaptation == 'Universal':
             adptdefault_value = {
-                'HDPthreshold': 0.05,
-                'HDPanalyzer': 'ksAnalyzer',
-                'HDPms': 15,
-                'HDPmsm': 'f_classif'
+                'pvalue': 0.05,
+                'QuantifyType': 'cliff'
             }
             adptparamSpace = {
-                'HDPthreshold': hp.uniform('HDPthreshold', 0.01, 0.5),
-                'HDPanalyzer': hp.choice('HDPanalyzer', ['ksAnalyzer', 'pAnalyzer', 'scoAnalyzer']),
-                'HDPms': hp.choice('HDPms', range(10, 90)),
-                'HDPmsm': hp.choice('HDPmsm', ['f_classif', 'chi2', 'mutual_info_classif'])
+                'pvalue': hp.uniform('pvalue', 0.01, 0.1),
+                'QuantifyType': hp.choice('QuantifyType', ['cliff', 'cohen'])
             }
 
-        if self.adaptation == 'HISNN':
-            adptdefault_value = {
-                'MinHam': 1.0,
-                'HISNNneighbors': 5
-            }
-            adptparamSpace = {
-                'MinHam': hp.uniform('MinHam', 0.5, 100),
-                'HISNNneighbors': hp.choice('HISNNneighbors', range(1, 100))
-            }
 
         if self.adaptation == 'DTB':
             adptdefault_value = {
@@ -706,10 +704,39 @@ class optParamSEQ(object):
             }
 
         default_value = dict(adptdefault_value, **clfdefault_value)
-        self.Adptbest = fmin(self.objFunc, space=adptparamSpace, algo=tpe.suggest, max_evals=int(self.fe*0.5), trials=Atrails)
-        self.SEQ = 1
-        Clfbest = fmin(self.objFunc, space=clfparamSpace, algo=tpe.suggest, max_evals=int(self.fe*0.5), trials=trails)
-        def_value = self.objFunc(default_value)['result']
-        inc_value = trails.best_trial['result']['result']
+        self.def_value = self.objFunc(default_value)['result']
+        self.Adptbest = fmin(self.objFunc, space=adptparamSpace, algo=tpe.suggest, max_evals=int(self.fe * 0.5),
+                             trials=self.Atrails)
+        self.Adptbest = space_eval(adptparamSpace, self.Adptbest)
 
-        return def_value, inc_value
+        his = dict()
+        try:
+            his['name'] = list(self.Atrails.trials[0]['misc']['vals'].keys()) + list(clfdefault_value.keys())
+        except:
+            his['name'] = [None]
+        i = 0
+        for item in self.Atrails.trials:
+            if item['state'] == 2:
+                results = list(deepflatten(item['misc']['vals'].values())) + list(clfdefault_value.values())
+                results.append(item['result']['result'])
+                his[i] = results
+                i += 1
+
+        self.SEQ = 1
+        Clfbest = fmin(self.objFunc, space=clfparamSpace, algo=tpe.suggest, max_evals=int(self.fe * 0.5),
+                       trials=self.trails)
+
+        try:
+            his['name1'] = list(self.Adptbest.keys()) + list(self.trails.trials[0]['misc']['vals'].keys())
+        except:
+            his['name1'] = [None]
+        for item in self.trails.trials:
+            if item['state'] == 2:
+                results = list(self.Adptbest.values()) + list(deepflatten(item['misc']['vals'].values()))
+                results.append(item['result']['result'])
+                his[i] = results
+                i += 1
+
+        inc_value = self.trails.best_trial['result']['result']
+
+        return np.asarray([self.def_value, inc_value]), his, Clfbest
