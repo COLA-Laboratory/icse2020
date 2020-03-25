@@ -1,7 +1,3 @@
-# Artifact Evaluation
-
-This is the artifact, including the source code and dataset, for the ICSE 2020 Technical Track paper: "Understanding the Automated Parameter Optimization on Transfer Learning for Cross-Project Defect Prediction: An Empirical Study". A pre-print of this paper is available at Accepted Paper https://github.com/COLA-Laboratory/icse2020/blob/master/icse2020-paper1711.pdf.
-
 ## Background
 Data-driven defect prediction has become increasingly important in software engineering process. Since it is not uncommon that data from a software project is insufficient for training a reliable defect prediction model, transfer learning that borrows data/knowledge from other projects to facilitate the model building at the current project, namely Cross-Project Defect Prediction (CPDP), is naturally plausible. Most CPDP techniques involve two major steps, i.e., transfer learning and classification, each of which has at least one parameter to be tuned to achieve their optimal performance. This practice fits well with the purpose of automated parameters optimization. However, there is a lack of thorough understanding about what are the impacts of automated parameters optimization on various CPDP techniques.
 
@@ -26,7 +22,7 @@ Hyperopt is a Python library that provides algorithms and software infrastructur
 
 ## Installation
 
-- `Python==3.6` 
+- `Python version should be 3.6` 
 - Install thrid-party packages (In `Anacaonda` environment)
   - `pip install hyperopt`
   - `pip install scikit-learn==0.20.4`
@@ -46,15 +42,13 @@ Hyperopt is a Python library that provides algorithms and software infrastructur
 
 ## Further developments
 
-> If you want to investigate more combinations (transfer learning algorithms + classification algorithms), please modify the following parts of code.
-
-1. Add new transfer learning algorithms into `code\Algorithms\domainAdaptation.py`
-2. Add new classification algorithms into `code\Algorithms\Classifier.py`
-3. Modify the call format in `code\Alogrithms\Framework.py`
+> This code is flexible to any further development.
+1. If you want to investigate more transfer learning algorithms, please amend `code\Algorithms\domainAdaptation.py`.
+2. If you want to investigate more classifiers, please amend `code\Algorithms\Classifier.py`
+3. If you want to adapt the calling format, please amend `code\Alogrithms\Framework.py`.
 
 ## Contact
 
 If you meet any problems, please feel free to contact us.
 + Ke Li (k.li@exeter.ac.uk)
 + Zilin Xiang (zilin.xiang@hotmail.com)
-+ Tao Chen (t.t.chen@lboro.ac.uk)
