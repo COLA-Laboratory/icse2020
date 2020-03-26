@@ -16,7 +16,7 @@ Hyperopt is a Python library that provides algorithms and software infrastructur
 
 ![](framework.png)
 
-## Investigated datasets
+## Datasets
 
 + AEEEM
 + JURECZKO (12 selected projects)
